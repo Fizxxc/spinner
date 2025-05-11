@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Entertainment Spin Wheel with Balance</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SweetAlert2 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    /* MOBILE FIRST STYLES */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      min-height: 600px;
+      max-width: 360px;
+      margin: 0 auto;
+      user-select: none;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+      color: #f8fafc;
+      position: relative;
+    }
+
+    .wheel-container {
+      position: relative;
+      width: 90vw;
+      max-width: 320px;
+      height: 90vw;
+      max-height: 320px;
+      margin: auto 0;
+      touch-action: manipulation;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Needle positioned right, simple arrow shape */
+    .needle {
+      position: absolute;
+      top: 50%;
+      left: 100%;
+      width: 10vw;
+      max-width: 40px;
+      height: 10vw;
+      max-height: 40px;
+      transform-origin: 15% 50%;
+      transform: translate(0, -50%) rotate(0deg);
+      user-select: none;
+      z-index: 30;
+      cursor: default;
+    }
+
+    /* Arrow shape for needle */
+    .needle::before {
+      content: "";
+      display: block;
+      width: 0;
+      height: 0;
+      border-top: 2.5vw solid transparent;
+      border-bottom: 2.5vw solid transparent;
+      border-right: 5vw solid #ef4444; /* Tailwind red-500 */
+      max-width: 40px;
+      max-height: 20px;
+    }
+
+    #resultText {
+      min-height: 3rem;
+      margin-top: 1.5rem;
+      font-weight: 700;
+      font-size: 1.25rem;
+      text-align: center;
+      min-height: 60px;
+      color: #fecaca; /* red-300 */
+      user-select: text;
+    }
+
+    button:focus {
+      outline: none;
+      ring-offset-width: 2;
+      ring-offset-color: #f87171;
+      ring-color: #f87171;
+      ring-width: 3px;
+    }
+
+    /* Top right fixed container for topup and withdrawal */
+    .top-right-controls {
+      position: fixed;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      gap: 12px;
+      z-index: 50;
+      user-select: none;
+    }
+
+    .control-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #ef4444; /* red-500 */
+      color: white;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.65);
+      transition: background-color 0.3s ease;
+      white-space: nowrap;
+    }
+
+    .control-button:disabled, .control-button[disabled] {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    .control-button:hover:not(:disabled) {
+      background-color: #dc2626; /* red-600 */
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.75);
+    }
+
+    .control-icon {
+      width: 20px;
+      height: 20px;
+      margin-right: 6px;
+      fill: currentColor;
+    }
+
+    /* Balance display top-left */
+    .balance-display {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      background-color: #111827; /* Tailwind gray-900 */
+      color: #a1a1aa; /* Tailwind gray-400 */
+      border-radius: 0.5rem;
+      padding: 8px 16px;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.75);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 50;
+      user-select: none;
+      min-width: 140px;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    /* Modal background */
+    .modal-bg {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0,0,0,0.6);
+      backdrop-filter: blur(3px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    /* Modal container */
+    .modal {
+      background-color: #1f2937;
+      padding: 1.5rem;
+      border-radius: 0.75rem;
+      color: white;
+      width: 90vw;
+      max-width: 360px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+    }
+
+    .modal h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    .modal label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-weight: 600;
+      color: #fef3c7;
+    }
+
+    .modal input[type="number"] {
+      width: 100%;
+      padding: 0.5rem;
+      border-radius: 0.375rem;
+      border: none;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    .modal button {
+      width: 100%;
+      background-color: #ef4444;
+      color: white;
+      font-weight: 700;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 1.125rem;
+      transition: background-color 0.3s ease;
+      border: none;
+    }
+
+    .modal button:disabled {
+      background-color: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .modal button:hover:not(:disabled) {
+      background-color: #dc2626;
+    }
+
+    .modal .close-btn {
+      background-color: transparent;
+      color: #fef3c7;
+      font-weight: 600;
+      margin-top: 0.75rem;
+      cursor: pointer;
+      text-align: center;
+      font-size: 1rem;
+      border: none;
+    }
+
+    /* Ensure mobile friendliness */
+    @media (min-width: 420px) {
+      .wheel-container {
+        width: 320px;
+        height: 320px;
+      }
+      .needle {
+        width: 40px;
+        height: 40px;
+      }
+      .needle::before {
+        border-top-width: 20px;
+        border-bottom-width: 20px;
+        border-right-width: 40px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Balance display top-left -->
+  <div class="balance-display" aria-live="polite" aria-atomic="true" aria-label="User balance">
+    Balance: <span id="balanceValue">0</span> pts
+  </div>
+
+  <!-- Top right controls -->
+  <div class="top-right-controls" role="region" aria-label="Top-up and Withdrawal controls">
+    <button class="control-button" id="topupBtn" type="button" aria-label="Top Up">
+      <svg class="control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 2v20m-7-7l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      Top Up
+    </button>
+    <button class="control-button" id="withdrawBtn" type="button" aria-label="Withdraw" disabled>
+      <svg class="control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 22V2m7 7l-7 7-7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+      Withdraw
+    </button>
+  </div>
+
+  <h1 class="text-4xl font-extrabold mb-6 select-none text-center">🎉 Entertainment Spin Wheel 🎉</h1>
+  <div class="wheel-container" role="img" aria-label="Spin wheel for entertainment only" aria-describedby="resultText">
+    <canvas id="wheel" width="320" height="320" class="rounded-full shadow-2xl"></canvas>
+    <div class="needle" id="needle" aria-hidden="true"></div>
+  </div>
+  <button id="spinBtn" class="w-full max-w-xs mt-8 py-3 bg-red-600 hover:bg-red-700 active:bg-red-800 rounded-full font-semibold shadow-lg transition duration-300 text-white" disabled>
+    Spin the Wheel!
+  </button>
+  <p id="resultText" aria-live="polite"></p>
+
+  <!-- Modal -->
+  <div id="modal" class="modal-bg hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalDesc">
+    <div class="modal">
+      <h2 id="modalTitle"></h2>
+      <p id="modalDesc" class="mb-4"></p>
+      <label for="amountInput">Amount:</label>
+      <input type="number" id="amountInput" min="1" step="1" />
+      <button id="modalConfirmBtn"></button>
+      <button class="close-btn" id="modalCloseBtn">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    // Show welcome alert with SweetAlert2
+    document.addEventListener('DOMContentLoaded', () => {
+      Swal.fire({
+        title: 'Welcome!',
+        text: 'Enjoy playing the Entertainment Spin Wheel! You can top up points to start spinning.',
+        icon: 'info',
+        confirmButtonText: 'Let\'s Play',
+        confirmButtonColor: '#ef4444',
+        background: '#1f2937',
+        color: '#fef3c7',
+      });
+    });
+
+    const canvas = document.getElementById('wheel');
+    const ctx = canvas.getContext('2d');
+    const spinBtn = document.getElementById('spinBtn');
+    const resultText = document.getElementById('resultText');
+    const needle = document.getElementById('needle');
+    const balanceValue = document.getElementById('balanceValue');
+    const topupBtn = document.getElementById('topupBtn');
+    const withdrawBtn = document.getElementById('withdrawBtn');
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalDesc = document.getElementById('modalDesc');
+    const amountInput = document.getElementById('amountInput');
+    const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+    const size = canvas.width;
+    const center = size / 2;
+    const radius = center - 10;
+    const segments = [
+      {label: 'Try Again', color: '#dc2626', points: 0},
+      {label: '100 Points', color: '#f59e0b', points: 100},
+      {label: '50 Points', color: '#22c55e', points: 50},
+      {label: '200 Points', color: '#3b82f6', points: 200},
+      {label: '500 Points', color: '#8b5cf6', points: 500},
+      {label: 'Jackpot!', color: '#db2777', points: 1000},
+      {label: '10 Points', color: '#14b8a6', points: 10},
+      {label: 'Lose Turn', color: '#f87171', points: 0}
+    ];
+
+    let segmentCount = segments.length;
+    let anglePerSegment = (2 * Math.PI) / segmentCount;
+
+    let rotation = 0; // Wheel current rotation in radians
+
+    // User balance stored in localStorage for persistence
+    let userBalance = parseInt(localStorage.getItem('userBalance')) || 0;
+    updateBalanceUI();
+
+    function updateBalanceUI() {
+      balanceValue.textContent = userBalance.toLocaleString();
+      if (userBalance >= 1000) {
+        spinBtn.disabled = false;
+      } else {
+        spinBtn.disabled = true;
+      }
+      if (userBalance >= 100000) {
+        withdrawBtn.disabled = false;
+      } else {
+        withdrawBtn.disabled = true;
+      }
+    }
+
+    function saveBalance() {
+      localStorage.setItem('userBalance', userBalance);
+      updateBalanceUI();
+    }
+
+    function drawSegment(index) {
+      const segment = segments[index];
+      const startAngle = index * anglePerSegment;
+      const endAngle = startAngle + anglePerSegment;
+
+      ctx.beginPath();
+      ctx.moveTo(center, center);
+      ctx.arc(center, center, radius, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = segment.color;
+      ctx.fill();
+      ctx.strokeStyle = '#ffffffcc';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(center, center);
+      ctx.rotate(startAngle + anglePerSegment / 2);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#fef3c7';
+      ctx.font = 'bold 16px Arial, sans-serif';
+      ctx.fillText(segment.label, radius - 12, 6);
+      ctx.restore();
+    }
+
+    function drawWheel() {
+      ctx.clearRect(0, 0, size, size);
+      for (let i = 0; i < segmentCount; i++) {
+        drawSegment(i);
+      }
+    }
+
+    function drawSpinningWheel(rotationAngle) {
+      ctx.clearRect(0, 0, size, size);
+      ctx.save();
+      ctx.translate(center, center);
+      ctx.rotate(rotationAngle);
+      ctx.translate(-center, -center);
+
+      for (let i = 0; i < segmentCount; i++) {
+        drawSegment(i);
+      }
+      ctx.restore();
+    }
+
+    const tickInterval = 70;
+    let lastTickTime = 0;
+    let needleAngle = 0;
+    let needleDirection = 1;
+
+    function updateNeedleAnimation(now) {
+      if (!spinBtn.disabled) {
+        needleAngle = 0;
+        needle.style.transform = `translate(0, -50%) rotate(${needleAngle}deg)`;
+        return;
+      }
+
+      if (!lastTickTime) lastTickTime = now;
+      const dt = now - lastTickTime;
+
+      if (dt > tickInterval) {
+        lastTickTime = now;
+        needleDirection *= -1;
+        needleAngle = needleDirection * 15;
+        needle.style.transform = `translate(0, -50%) rotate(${needleAngle}deg)`;
+      }
+
+      requestAnimationFrame(updateNeedleAnimation);
+    }
+
+    function spinWheel() {
+      if (spinBtn.disabled) return;
+
+      if (userBalance < 1000) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Insufficient balance',
+          text: 'You need at least 1,000 points to spin. Please top up your balance.',
+          confirmButtonColor: '#ef4444'
+        });
+        return;
+      }
+
+      const spinCost = 1000;
+      if (userBalance < spinCost) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Insufficient balance',
+          text: 'You don\'t have enough points to spin.',
+          confirmButtonColor: '#ef4444'
+        });
+        return;
+      }
+      userBalance -= spinCost;
+      saveBalance();
+
+      spinBtn.disabled = true;
+      resultText.textContent = '';
+
+      const spins = Math.floor(Math.random() * 3) + 4;
+      const randomSegment = Math.floor(Math.random() * segmentCount);
+      const segmentAngle = randomSegment * anglePerSegment;
+      const extraRotation = Math.random() * anglePerSegment;
+      const targetRotation = (2 * Math.PI * spins) + (2 * Math.PI - segmentAngle - extraRotation);
+
+      const duration = 5000;
+      const start = performance.now();
+
+      function animate(time) {
+        const elapsed = time - start;
+        if (elapsed < duration) {
+          const t = elapsed / duration;
+          const eased = 1 - Math.pow(1 - t, 3);
+
+          rotation = targetRotation * eased;
+          drawSpinningWheel(rotation);
+
+          requestAnimationFrame(animate);
+        } else {
+          rotation = targetRotation;
+          drawSpinningWheel(rotation);
+
+          const rewardPoints = segments[randomSegment].points || 0;
+          userBalance += rewardPoints;
+
+          saveBalance();
+
+          spinBtn.disabled = false;
+          needle.style.transform = 'translate(0, -50%) rotate(0deg)';
+
+          if (rewardPoints > 0) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Congratulations!',
+              html: `You earned <strong>${rewardPoints.toLocaleString()}</strong> points!`,
+              confirmButtonColor: '#22c55e'
+            });
+            resultText.textContent = `Congrats! You earned ${rewardPoints.toLocaleString()} points!`;
+          } else {
+            Swal.fire({
+              icon: 'info',
+              title: 'Result',
+              text: segments[randomSegment].label,
+              confirmButtonColor: '#3b82f6'
+            });
+            resultText.textContent = `Result: ${segments[randomSegment].label}`;
+          }
+        }
+      }
+
+      requestAnimationFrame(animate);
+      lastTickTime = 0;
+      requestAnimationFrame(updateNeedleAnimation);
+    }
+
+    // Modal logic for Topup and Withdraw
+    let modalMode = null; // "topup" or "withdraw"
+
+    function openModal(mode) {
+      modalMode = mode;
+      amountInput.value = '';
+      modalConfirmBtn.disabled = true;
+      if (mode === 'topup') {
+        modalTitle.textContent = 'Top Up Balance';
+        modalDesc.textContent = 'Enter amount of points to add to your balance.';
+        modalConfirmBtn.textContent = 'Top Up';
+      } else if (mode === 'withdraw') {
+        modalTitle.textContent = 'Withdraw Balance';
+        modalDesc.textContent = 'Enter amount of points to withdraw as money. Minimum 100,000 points.';
+        modalConfirmBtn.textContent = 'Withdraw';
+      }
+      modal.classList.remove('hidden');
+      amountInput.focus();
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+      modalMode = null;
+    }
+
+    function validateAmount() {
+      const val = parseInt(amountInput.value, 10);
+      if (!val || val <= 0) {
+        modalConfirmBtn.disabled = true;
+        return;
+      }
+      if (modalMode === 'withdraw' && val > userBalance) {
+        modalConfirmBtn.disabled = true;
+        return;
+      }
+      if (modalMode === 'withdraw' && val < 100000) {
+        modalConfirmBtn.disabled = true;
+        return;
+      }
+      modalConfirmBtn.disabled = false;
+    }
+
+    modalConfirmBtn.addEventListener('click', () => {
+      const val = parseInt(amountInput.value, 10);
+      if (!val || val <= 0) return;
+
+      if (modalMode === 'topup') {
+        userBalance += val;
+        saveBalance();
+        Swal.fire({
+          icon: 'success',
+          title: 'Top Up Successful',
+          html: `You have successfully topped up <strong>${val.toLocaleString()}</strong> points!`,
+          confirmButtonColor: '#22c55e'
+        });
+      } else if (modalMode === 'withdraw') {
+        if (val > userBalance) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Withdrawal Failed',
+            text: 'Insufficient balance for withdrawal.',
+            confirmButtonColor: '#dc2626'
+          });
+          return;
+        }
+        if (val < 100000) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Invalid Amount',
+            text: 'Minimum withdrawal amount is 100,000 points.',
+            confirmButtonColor: '#fbbf24'
+          });
+          return;
+        }
+        userBalance -= val;
+        saveBalance();
+        const money = val / 1000; // Conversion: 1000 pts = 1 money unit
+        Swal.fire({
+          icon: 'success',
+          title: 'Withdrawal Successful',
+          html: `You withdrew <strong>${val.toLocaleString()}</strong> points equivalent to <strong>${money.toFixed(2)}</strong> money units.`,
+          confirmButtonColor: '#22c55e'
+        });
+      }
+      updateBalanceUI();
+      closeModal();
+    });
+
+    amountInput.addEventListener('input', validateAmount);
+    modalCloseBtn.addEventListener('click', closeModal);
+
+    // Close modal on outside click or ESC key
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+        closeModal();
+      }
+    });
+
+    topupBtn.addEventListener('click', () => openModal('topup'));
+    withdrawBtn.addEventListener('click', () => openModal('withdraw'));
+
+    drawWheel();
+    updateBalanceUI();
+
+    spinBtn.addEventListener('click', spinWheel);
+    spinBtn.addEventListener('keydown', e => {
+      if(e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        spinWheel();
+      }
+    });
+  </script>
+
+  <footer class="mt-8 text-xs text-center text-gray-400 px-4 max-w-xs">
+    <p><strong>Disclaimer:</strong> This game is for entertainment purposes only. No real money betting or gambling is involved. Points earned can be withdrawn as money if the balance reaches 100,000 points or more with a conversion rate 1000 points = 1 unit money.</p>
+  </footer>
+</body>
+</html>
+
